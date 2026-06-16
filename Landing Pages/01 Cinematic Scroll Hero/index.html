@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>MOTION — A World That Never Stops Moving</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#f4f2ee;
+    --dim:rgba(244,242,238,0.6);
+    --line:rgba(244,242,238,0.18);
+    --font-display:'Bricolage Grotesque', 'Helvetica Neue', Arial, sans-serif;
+    --font-body:'Inter', 'Helvetica Neue', Arial, sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{
+    background:#04040a;
+    color:var(--ink);
+    font-family:var(--font-body);
+    overflow-x:hidden;
+    width:100%;
+    cursor:none;
+  }
+  @media (pointer:coarse){ html,body{cursor:auto;} }
+  ::selection{background:var(--ink);color:#04040a;}
+
+  /* ---------- PRELOADER ---------- */
+  #preloader{
+    position:fixed;inset:0;
+    background:#04040a;
+    z-index:50;
+    display:flex;align-items:center;justify-content:center;
+    transition:opacity 0.9s cubic-bezier(.4,0,.2,1), visibility 0.9s;
+  }
+  #preloader.hide{opacity:0;visibility:hidden;pointer-events:none;}
+  #preloader .mark{
+    font-family:var(--font-display);
+    font-size:13px;
+    letter-spacing:0.16em;
+    color:var(--dim);
+    display:flex;align-items:center;gap:10px;
+  }
+  #preloader .mark::after{
+    content:'';
+    width:6px;height:6px;border-radius:50%;
+    background:var(--ink);
+    animation:pulse 1.1s ease-in-out infinite;
+  }
+  @keyframes pulse{0%,100%{opacity:0.2;}50%{opacity:1;}}
+
+  /* ---------- CUSTOM CURSOR ---------- */
+  #cursor{
+    position:fixed;top:0;left:0;
+    width:18px;height:18px;margin:-9px 0 0 -9px;
+    border-radius:50%;
+    border:1px solid var(--ink);
+    z-index:60;
+    pointer-events:none;
+    mix-blend-mode:difference;
+    transition:width .25s cubic-bezier(.16,1,.3,1), height .25s cubic-bezier(.16,1,.3,1), margin .25s cubic-bezier(.16,1,.3,1), background .25s;
+    will-change:transform;
+  }
+  #cursor.hover{
+    width:56px;height:56px;margin:-28px 0 0 -28px;
+    background:var(--ink);border-color:transparent;
+  }
+  @media (pointer:coarse){ #cursor{display:none;} }
+
+  #scene{
+    position:fixed;
+    top:0;left:0;
+    width:100vw;height:100vh;
+    z-index:0;
+    transform:scale(1.05);
+    transition:transform 1.8s cubic-bezier(.16,1,.3,1);
+  }
+  #scene.in{transform:scale(1);}
+  #scene canvas{display:block;width:100%;height:100%;}
+
+  #scrim{
+    position:fixed;
+    top:0;left:0;
+    width:100vw;height:100vh;
+    background:linear-gradient(180deg, rgba(2,2,5,0.5) 0%, rgba(2,2,5,0.05) 30%, rgba(2,2,5,0.1) 65%, rgba(2,2,5,0.7) 100%);
+    z-index:1;
+    pointer-events:none;
+  }
+
+  /* ---------- MIDGROUND DEPTH LAYER ---------- */
+  #midground{
+    position:fixed;top:0;left:0;width:100vw;height:100vh;
+    z-index:2;
+    pointer-events:none;
+    overflow:hidden;
+  }
+  .mg-num{
+    position:absolute;
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:min(46vw,620px);
+    line-height:1;
+    color:transparent;
+    -webkit-text-stroke:1px rgba(244,242,238,0.08);
+    opacity:0;
+    transition:opacity 1.4s ease, transform .6s ease-out;
+    will-change:transform, opacity;
+    user-select:none;
+  }
+  .mg-num.active{opacity:1;}
+  #mg1{top:8%;left:-5%;}
+  #mg2{top:20%;right:-10%;}
+  #mg3{top:12%;left:6%;}
+
+  .mg-ring-wrap{
+    position:absolute;top:50%;left:80%;
+    width:46vmax;height:46vmax;
+    margin:-23vmax 0 0 -23vmax;
+    will-change:transform;
+  }
+  .mg-ring{
+    width:100%;height:100%;
+    border:1px solid rgba(244,242,238,0.06);
+    border-radius:50%;
+    position:relative;
+    animation:spin 100s linear infinite;
+  }
+  .mg-ring::before{
+    content:'';
+    position:absolute;inset:9%;
+    border:1px solid rgba(244,242,238,0.04);
+    border-radius:50%;
+  }
+  @keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
+
+  @media (max-width:760px){
+    .mg-num{font-size:min(72vw,420px);}
+  }
+
+  .letterbox{
+    position:fixed;
+    left:0;width:100vw;
+    background:#04040a;
+    z-index:3;
+    pointer-events:none;
+  }
+  .letterbox.top{top:0;height:4vh;}
+  .letterbox.bottom{bottom:0;height:4vh;}
+  @media (max-aspect-ratio: 4/5){
+    .letterbox{display:none;}
+  }
+
+  .progress-rail{
+    position:fixed;
+    right:28px;
+    top:50%;
+    transform:translateY(-50%);
+    height:160px;
+    width:2px;
+    background:var(--line);
+    z-index:5;
+    opacity:0;
+    transition:opacity 1.1s ease;
+  }
+  .progress-rail.in{opacity:1;}
+  .progress-fill{
+    position:absolute;
+    top:0;left:0;
+    width:100%;
+    background:var(--ink);
+    height:0%;
+  }
+
+  nav{
+    position:fixed;
+    top:0;left:0;width:100%;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:28px 5vw;
+    z-index:5;
+    font-size:13px;
+    letter-spacing:0.08em;
+    mix-blend-mode:difference;
+    opacity:0;
+    transition:opacity 1.1s ease;
+  }
+  nav.in{opacity:1;}
+  nav .mark{font-family:var(--font-display);font-weight:600;letter-spacing:0.04em;}
+  nav .tag{color:var(--dim);font-weight:400;}
+
+  main{position:relative;z-index:4;}
+
+  section{
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    padding:0 6vw;
+    position:relative;
+  }
+
+  .panel{
+    display:inline-block;
+  }
+
+  .reveal{
+    opacity:0;
+    transform:translateY(36px);
+    transition:opacity 1s cubic-bezier(.16,1,.3,1), transform 1s cubic-bezier(.16,1,.3,1);
+  }
+  .reveal.in{opacity:1;transform:translateY(0);}
+
+  .eyebrow{
+    font-size:12px;
+    letter-spacing:0.22em;
+    text-transform:uppercase;
+    color:var(--dim);
+    margin-bottom:22px;
+  }
+
+  h1.hero{
+    font-family:var(--font-display);
+    font-size:clamp(52px,10vw,148px);
+    line-height:0.9;
+    font-weight:600;
+    letter-spacing:-0.02em;
+  }
+  h1.hero em{
+    font-style:normal;
+    font-weight:300;
+    opacity:0.55;
+  }
+
+  .sub{
+    margin-top:28px;
+    max-width:540px;
+    font-size:clamp(15px,1.6vw,18px);
+    line-height:1.6;
+    color:var(--dim);
+    font-weight:300;
+  }
+
+  .chapter-label{
+    position:absolute;
+    bottom:48px;
+    left:6vw;
+    font-size:12px;
+    letter-spacing:0.18em;
+    color:var(--dim);
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .chapter-label .num{color:var(--ink);}
+
+  h2.big{
+    font-family:var(--font-display);
+    font-size:clamp(36px,7vw,94px);
+    line-height:1.04;
+    font-weight:500;
+    letter-spacing:-0.01em;
+    max-width:920px;
+  }
+  h2.big .accent{color:var(--dim);font-weight:300;}
+
+  .stat-row{
+    display:flex;
+    gap:64px;
+    margin-top:56px;
+    flex-wrap:wrap;
+  }
+  .stat .n{font-family:var(--font-display);font-size:clamp(28px,4vw,48px);font-weight:600;}
+  .stat .l{font-size:12px;letter-spacing:0.1em;color:var(--dim);margin-top:8px;text-transform:uppercase;}
+
+  .cta-section{
+    align-items:center;
+    text-align:center;
+  }
+  .cta-section h2{
+    font-family:var(--font-display);
+    font-size:clamp(42px,9vw,124px);
+    font-weight:600;
+    line-height:0.94;
+    letter-spacing:-0.02em;
+  }
+  .cta-section .sub{margin:24px auto 44px;text-align:center;}
+
+  .btn{
+    display:inline-flex;
+    align-items:center;
+    gap:12px;
+    padding:18px 36px;
+    border:1px solid var(--line);
+    border-radius:100px;
+    color:var(--ink);
+    text-decoration:none;
+    font-size:14px;
+    letter-spacing:0.04em;
+    backdrop-filter:blur(6px);
+    background:rgba(244,242,238,0.04);
+    transition:background .35s ease, color .35s ease, border-color .35s ease, transform .15s ease;
+  }
+  .btn:hover{
+    background:var(--ink);
+    color:#04040a;
+  }
+
+  footer{
+    position:relative;
+    z-index:4;
+    padding:40px 6vw 56px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-size:12px;
+    color:var(--dim);
+    letter-spacing:0.05em;
+    flex-wrap:wrap;
+    gap:16px;
+  }
+  footer a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--line);}
+
+  .grain{
+    position:fixed;
+    top:0;left:0;width:100vw;height:100vh;
+    z-index:6;
+    pointer-events:none;
+    opacity:0.045;
+    mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  @media (max-width:640px){
+    .progress-rail{display:none;}
+    .stat-row{gap:40px;}
+  }
+</style>
+</head>
+<body>
+
+<div id="preloader"><span class="mark">MOTION™</span></div>
+<div id="cursor"></div>
+
+<div id="scene"></div>
+<div id="scrim"></div>
+<div id="midground">
+  <div class="mg-num" id="mg1">01</div>
+  <div class="mg-num" id="mg2">02</div>
+  <div class="mg-num" id="mg3">03</div>
+  <div class="mg-ring-wrap"><div class="mg-ring"></div></div>
+</div>
+<div class="letterbox top"></div>
+<div class="letterbox bottom"></div>
+<div class="grain"></div>
+
+<div class="progress-rail"><div class="progress-fill" id="progressFill"></div></div>
+
+<nav>
+  <span class="mark">MOTION™</span>
+  <span class="tag">Live-Rendered Scene — Demo Build</span>
+</nav>
+
+<main>
+
+  <section id="s1">
+    <div class="eyebrow reveal">A single scene, rendered live</div>
+    <h1 class="hero reveal">Websites that<br><em>move</em> like film.</h1>
+    <p class="sub reveal">This isn't footage — it's one continuous world, computed by your GPU in real time: fog, light and drifting dust, all reacting to your scroll. Refresh the page and it never plays back quite the same way twice.</p>
+    <div class="chapter-label"><span class="num">01</span> — Departure</div>
+  </section>
+
+  <section id="s2">
+    <h2 class="big reveal">We don't cut between scenes.<br><span class="accent">We build one world that never stops moving.</span></h2>
+    <div class="stat-row reveal">
+      <div class="stat"><div class="n">1</div><div class="l">Continuous Render</div></div>
+      <div class="stat"><div class="n">0</div><div class="l">Stock Clips Used</div></div>
+      <div class="stat"><div class="n">60fps</div><div class="l">Real-Time GPU</div></div>
+    </div>
+    <div class="chapter-label"><span class="num">02</span> — Drift</div>
+  </section>
+
+  <section id="s3">
+    <h2 class="big reveal">Every pixel, computed live.<br><span class="accent">Nothing pre-rendered. Nothing faked.</span></h2>
+    <p class="sub reveal">Built with raw WebGL and a hand-written shader — the same techniques used by the top creative studios charging five figures for a launch site. Move your cursor. Keep scrolling.</p>
+    <div class="chapter-label"><span class="num">03</span> — Arrival</div>
+  </section>
+
+  <section class="cta-section">
+    <div class="eyebrow reveal" style="text-align:center;">Like what you just scrolled through?</div>
+    <h2 class="reveal">Let's build<br>yours.</h2>
+    <p class="sub reveal">This exact engine — retuned to your brand, your palette, your story.</p>
+    <a href="https://instagram.com/yourhandle" target="_blank" class="btn reveal">DM me on Instagram →</a>
+  </section>
+
+</main>
+
+<footer>
+  <span>© 2026 MOTION — Design &amp; Development</span>
+  <span><a href="mailto:dyg.buran@gmail.com">dyg.buran@gmail.com</a></span>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+
+  // ---------- RENDER SETUP ----------
+  const container = document.getElementById('scene');
+  let renderScale = window.innerWidth < 760 ? 0.55 : 0.68;
+
+  const renderer = new THREE.WebGLRenderer({ antialias:false, alpha:false });
+  container.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.OrthographicCamera(-1,1,1,-1,0,1);
+
+  const uniforms = {
+    resolution: { value: new THREE.Vector2(1,1) },
+    time: { value: 0 },
+    progress: { value: 0 },
+    mouse: { value: new THREE.Vector2(0,0) },
+    grain: { value: 0.05 },
+    vig: { value: 0.72 }
+  };
+
+  function applySize(){
+    const w = window.innerWidth, h = window.innerHeight;
+    renderer.setSize(Math.max(2, Math.floor(w*renderScale)), Math.max(2, Math.floor(h*renderScale)), false);
+    uniforms.resolution.value.set(w*renderScale, h*renderScale);
+  }
+  applySize();
+
+  const vertexShader = `
+    varying vec2 vUv;
+    void main(){
+      vUv = uv;
+      gl_Position = vec4(position, 1.0);
+    }
+  `;
+
+  const fragmentShader = `
+    precision highp float;
+    varying vec2 vUv;
+    uniform vec2 resolution;
+    uniform float time;
+    uniform float progress;
+    uniform vec2 mouse;
+    uniform float grain;
+    uniform float vig;
+
+    float hash13(vec3 p){
+      p = fract(p*0.3183099+0.1);
+      p *= 17.0;
+      return fract(p.x*p.y*p.z*(p.x+p.y+p.z));
+    }
+
+    float noise3(vec3 x){
+      vec3 i = floor(x);
+      vec3 f = fract(x);
+      f = f*f*(3.0-2.0*f);
+      return mix(
+        mix(mix(hash13(i+vec3(0.0,0.0,0.0)), hash13(i+vec3(1.0,0.0,0.0)), f.x),
+            mix(hash13(i+vec3(0.0,1.0,0.0)), hash13(i+vec3(1.0,1.0,0.0)), f.x), f.y),
+        mix(mix(hash13(i+vec3(0.0,0.0,1.0)), hash13(i+vec3(1.0,0.0,1.0)), f.x),
+            mix(hash13(i+vec3(0.0,1.0,1.0)), hash13(i+vec3(1.0,1.0,1.0)), f.x), f.y),
+        f.z
+      );
+    }
+
+    float fbm(vec3 p){
+      float v = 0.0;
+      float a = 0.55;
+      for(int i=0;i<3;i++){
+        v += a*noise3(p);
+        p *= 2.05;
+        a *= 0.5;
+      }
+      return v;
+    }
+
+    vec3 palette(float t, float phase){
+      vec3 a = vec3(0.55,0.5,0.55);
+      vec3 b = vec3(0.45,0.45,0.45);
+      vec3 c = vec3(1.0,1.0,1.0);
+      vec3 d = vec3(0.0,0.12,0.25) + phase;
+      return a + b*cos(6.28318*(c*t+d));
+    }
+
+    void main(){
+      vec2 uv = vUv;
+      vec2 p = uv*2.0-1.0;
+      p.x *= resolution.x/resolution.y;
+
+      vec2 m
