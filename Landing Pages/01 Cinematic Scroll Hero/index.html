@@ -493,4 +493,160 @@
       vec2 p = uv*2.0-1.0;
       p.x *= resolution.x/resolution.y;
 
-      vec2 m
+      vec2 m = (mouse*2.0-1.0);
+      m.x *= resolution.x/resolution.y;
+
+      vec3 ro = vec3(0.0, 0.0, -3.2 + progress*1.4);
+      vec3 rd = normalize(vec3(p + m*0.12, 1.6));
+
+      float t = 0.0;
+      float density = 0.0;
+      vec3 lightDir = normalize(vec3(0.3, 0.5, -0.6));
+      vec3 col = vec3(0.0);
+      float trans = 1.0;
+
+      for(int i=0;i<48;i++){
+        vec3 pos = ro + rd*t;
+        float n = fbm(pos*0.55 + vec3(0.0, progress*0.6, time*0.035));
+        float d = n - 0.42;
+        if(d > 0.0){
+          float dens = d*0.9;
+          float lightSample = fbm((pos + lightDir*0.6)*0.55 + vec3(0.0, progress*0.6, time*0.035));
+          float shaft = clamp(1.0 - lightSample*1.4, 0.0, 1.0);
+          vec3 pcol = palette(progress*0.5 + n*0.4, time*0.02);
+          col += pcol * dens * trans * (0.35 + shaft*0.9) * 0.10;
+          trans *= exp(-dens*0.5);
+          density += dens*0.08;
+        }
+        t += 0.085 + t*0.012;
+        if(trans < 0.02 || t > 9.0) break;
+      }
+
+      vec3 base = palette(progress*0.5, time*0.015) * 0.06;
+      col = base + col;
+
+      float sparkle = pow(hash13(vec3(floor(p*340.0), floor(time*7.0))), 26.0);
+      col += sparkle * 1.4 * (0.3 + density);
+
+      float vigAmt = length(p*vec2(0.85,1.0));
+      col *= mix(1.0, 1.0 - vig, smoothstep(0.4, 1.3, vigAmt));
+
+      float g = (hash13(vec3(p*resolution.xy, time*60.0)) - 0.5) * grain;
+      col += g;
+
+      col = pow(max(col, 0.0), vec3(0.92));
+
+      gl_FragColor = vec4(col, 1.0);
+    }
+  `;
+
+  const material = new THREE.ShaderMaterial({ uniforms, vertexShader, fragmentShader });
+  const geometry = new THREE.PlaneGeometry(2,2);
+  const mesh = new THREE.Mesh(geometry, material);
+  scene.add(mesh);
+
+  window.addEventListener('resize', applySize);
+
+  // ---------- SCROLL + MOUSE SMOOTHING ----------
+  let targetProgress = 0, currentProgress = 0;
+  let targetMouse = {x:0.5,y:0.5}, currentMouse = {x:0.5,y:0.5};
+
+  function updateScrollProgress(){
+    const max = document.documentElement.scrollHeight - window.innerHeight;
+    targetProgress = max > 0 ? window.scrollY / max : 0;
+    const fill = document.getElementById('progressFill');
+    if(fill) fill.style.height = (targetProgress*100).toFixed(2) + '%';
+  }
+  window.addEventListener('scroll', updateScrollProgress, { passive:true });
+  updateScrollProgress();
+
+  window.addEventListener('mousemove', (e)=>{
+    targetMouse.x = e.clientX / window.innerWidth;
+    targetMouse.y = 1.0 - (e.clientY / window.innerHeight);
+  });
+
+  // ---------- CUSTOM CURSOR ----------
+  const cursorEl = document.getElementById('cursor');
+  window.addEventListener('mousemove', (e)=>{
+    cursorEl.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
+  });
+  document.querySelectorAll('a, button, .btn').forEach(el=>{
+    el.addEventListener('mouseenter', ()=>cursorEl.classList.add('hover'));
+    el.addEventListener('mouseleave', ()=>cursorEl.classList.remove('hover'));
+  });
+
+  // ---------- MAGNETIC CTA ----------
+  document.querySelectorAll('.btn').forEach(btn=>{
+    btn.addEventListener('mousemove', (e)=>{
+      const r = btn.getBoundingClientRect();
+      const dx = (e.clientX - (r.left + r.width/2)) * 0.25;
+      const dy = (e.clientY - (r.top + r.height/2)) * 0.25;
+      btn.style.transform = `translate(${dx}px, ${dy}px)`;
+    });
+    btn.addEventListener('mouseleave', ()=>{ btn.style.transform = 'translate(0,0)'; });
+  });
+
+  // ---------- STAGGERED REVEALS ----------
+  const revealEls = document.querySelectorAll('.reveal');
+  const io = new IntersectionObserver((entries)=>{
+    entries.forEach((entry, idx)=>{
+      if(entry.isIntersecting){
+        setTimeout(()=> entry.target.classList.add('in'), idx*90);
+        io.unobserve(entry.target);
+      }
+    });
+  }, { threshold:0.35 });
+  revealEls.forEach(el=>io.observe(el));
+
+  // ---------- MIDGROUND NUMBERS ----------
+  const mgEls = [document.getElementById('mg1'), document.getElementById('mg2'), document.getElementById('mg3')];
+  const sections = [document.getElementById('s1'), document.getElementById('s2'), document.getElementById('s3')];
+  const mgIo = new IntersectionObserver((entries)=>{
+    entries.forEach(entry=>{
+      const idx = sections.indexOf(entry.target);
+      if(idx === -1) return;
+      mgEls.forEach((el,i)=> el && el.classList.toggle('active', i===idx && entry.isIntersecting));
+    });
+  }, { threshold:0.5 });
+  sections.forEach(s=> s && mgIo.observe(s));
+
+  // ---------- NAV / RAIL / SCENE-IN ----------
+  requestAnimationFrame(()=>{
+    const navEl = document.querySelector('nav');
+    const railEl = document.querySelector('.progress-rail');
+    const sceneEl = document.getElementById('scene');
+    if(navEl) navEl.classList.add('in');
+    if(railEl) railEl.classList.add('in');
+    if(sceneEl) sceneEl.classList.add('in');
+  });
+
+  // ---------- PRELOADER ----------
+  function hidePreloader(){
+    const pre = document.getElementById('preloader');
+    if(pre) pre.classList.add('hide');
+  }
+  window.addEventListener('load', ()=> setTimeout(hidePreloader, 350));
+  // fallback in case 'load' already fired before this script ran, or an asset stalls
+  setTimeout(hidePreloader, 2500);
+
+  // ---------- RENDER LOOP ----------
+  const clock = new THREE.Clock();
+  function tick(){
+    const dt = clock.getDelta();
+    currentProgress += (targetProgress - currentProgress) * 0.06;
+    currentMouse.x += (targetMouse.x - currentMouse.x) * 0.08;
+    currentMouse.y += (targetMouse.y - currentMouse.y) * 0.08;
+
+    uniforms.time.value += dt;
+    uniforms.progress.value = currentProgress;
+    uniforms.mouse.value.set(currentMouse.x, currentMouse.y);
+
+    renderer.render(scene, camera);
+    requestAnimationFrame(tick);
+  }
+  tick();
+
+})();
+</script>
+</body>
+</html>
