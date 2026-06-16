@@ -1,5 +1,7 @@
 # Parallax Cut Scroll Hero
 
+**[Live demo →](https://alex-buran.github.io/portfolio/Landing%20Pages/03%20Parallax%20Cut%20Scroll%20Hero/)**
+
 Single-file demo. Open `index.html` directly in a browser (double-click it) — no build step, no server, no video files.
 
 ## What it is
