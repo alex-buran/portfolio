@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>DRIFT — A Scene That Follows Where You Look</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#f4f2ee;
+    --dim:rgba(244,242,238,0.6);
+    --line:rgba(244,242,238,0.18);
+    --font-display:'Bricolage Grotesque', 'Helvetica Neue', Arial, sans-serif;
+    --font-body:'Inter', 'Helvetica Neue', Arial, sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{
+    background:#04040a;
+    color:var(--ink);
+    font-family:var(--font-body);
+    overflow-x:hidden;
+    width:100%;
+    cursor:none;
+  }
+  @media (pointer:coarse){ html,body{cursor:auto;} }
+  ::selection{background:var(--ink);color:#04040a;}
+
+  /* ---------- PRELOADER ---------- */
+  #preloader{
+    position:fixed;inset:0;
+    background:#04040a;
+    z-index:50;
+    display:flex;align-items:center;justify-content:center;
+    transition:opacity 0.9s cubic-bezier(.4,0,.2,1), visibility 0.9s;
+  }
+  #preloader.hide{opacity:0;visibility:hidden;pointer-events:none;}
+  #preloader .mark{
+    font-family:var(--font-display);
+    font-size:13px;
+    letter-spacing:0.16em;
+    color:var(--dim);
+    display:flex;align-items:center;gap:10px;
+  }
+  #preloader .mark::after{
+    content:'';
+    width:6px;height:6px;border-radius:50%;
+    background:var(--ink);
+    animation:pulse 1.1s ease-in-out infinite;
+  }
+  @keyframes pulse{0%,100%{opacity:0.2;}50%{opacity:1;}}
+
+  /* ---------- CUSTOM CURSOR ---------- */
+  #cursor{
+    position:fixed;top:0;left:0;
+    width:18px;height:18px;margin:-9px 0 0 -9px;
+    border-radius:50%;
+    border:1px solid var(--ink);
+    z-index:60;
+    pointer-events:none;
+    mix-blend-mode:difference;
+    transition:width .25s cubic-bezier(.16,1,.3,1), height .25s cubic-bezier(.16,1,.3,1), margin .25s cubic-bezier(.16,1,.3,1), background .25s;
+    will-change:transform;
+  }
+  #cursor.hover{
+    width:56px;height:56px;margin:-28px 0 0 -28px;
+    background:var(--ink);border-color:transparent;
+  }
+  @media (pointer:coarse){ #cursor{display:none;} }
+
+  #scene{
+    position:fixed;
+    top:0;left:0;
+    width:100vw;height:100vh;
+    z-index:0;
+    transform:scale(1.05);
+    transition:transform 1.8s cubic-bezier(.16,1,.3,1);
+  }
+  #scene.in{transform:scale(1);}
+  #scene canvas{display:block;width:100%;height:100%;}
+
+  #scrim{
+    position:fixed;
+    top:0;left:0;
+    width:100vw;height:100vh;
+    background:linear-gradient(180deg, rgba(2,2,5,0.5) 0%, rgba(2,2,5,0.05) 30%, rgba(2,2,5,0.1) 65%, rgba(2,2,5,0.7) 100%);
+    z-index:1;
+    pointer-events:none;
+  }
+
+  /* ---------- MIDGROUND DEPTH LAYER ---------- */
+  #midground{
+    position:fixed;top:0;left:0;width:100vw;height:100vh;
+    z-index:2;
+    pointer-events:none;
+    overflow:hidden;
+  }
+  .mg-num{
+    position:absolute;
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:min(46vw,620px);
+    line-height:1;
+    color:transparent;
+    -webkit-text-stroke:1px rgba(244,242,238,0.08);
+    opacity:0;
+    transition:opacity 1.4s ease, transform .6s ease-out;
+    will-change:transform, opacity;
+    user-select:none;
+  }
+  .mg-num.active{opacity:1;}
+  #mg1{top:8%;left:-5%;}
+  #mg2{top:20%;right:-10%;}
+  #mg3{top:12%;left:6%;}
+
+  .mg-ring-wrap{
+    position:absolute;top:50%;left:80%;
+    width:46vmax;height:46vmax;
+    margin:-23vmax 0 0 -23vmax;
+    will-change:transform;
+  }
+  .mg-ring{
+    width:100%;height:100%;
+    border:1px solid rgba(244,242,238,0.06);
+    border-radius:50%;
+    position:relative;
+    animation:spin 100s linear infinite;
+  }
+  .mg-ring::before{
+    content:'';
+    position:absolute;inset:9%;
+    border:1px solid rgba(244,242,238,0.04);
+    border-radius:50%;
+  }
+  @keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
+
+  @media (max-width:760px){
+    .mg-num{font-size:min(72vw,420px);}
+  }
+
+  .letterbox{
+    position:fixed;
+    left:0;width:100vw;
+    background:#04040a;
+    z-index:3;
+    pointer-events:none;
+  }
+  .letterbox.top{top:0;height:4vh;}
+  .letterbox.bottom{bottom:0;height:4vh;}
+  @media (max-aspect-ratio: 4/5){
+    .letterbox{display:none;}
+  }
+
+  .progress-rail{
+    position:fixed;
+    right:28px;
+    top:50%;
+    transform:translateY(-50%);
+    height:160px;
+    width:2px;
+    background:var(--line);
+    z-index:5;
+    opacity:0;
+    transition:opacity 1.1s ease;
+  }
+  .progress-rail.in{opacity:1;}
+  .progress-fill{
+    position:absolute;
+    top:0;left:0;
+    width:100%;
+    background:var(--ink);
+    height:0%;
+  }
+
+  nav{
+    position:fixed;
+    top:0;left:0;width:100%;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:28px 5vw;
+    z-index:5;
+    font-size:13px;
+    letter-spacing:0.08em;
+    mix-blend-mode:difference;
+    opacity:0;
+    transition:opacity 1.1s ease;
+  }
+  nav.in{opacity:1;}
+  nav .mark{font-family:var(--font-display);font-weight:600;letter-spacing:0.04em;}
+  nav .tag{color:var(--dim);font-weight:400;}
+
+  main{position:relative;z-index:4;}
+
+  section{
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    padding:0 6vw;
+    position:relative;
+  }
+
+  .panel{
+    display:inline-block;
+  }
+
+  .reveal{
+    opacity:0;
+    transform:translateY(36px);
+    transition:opacity 1s cubic-bezier(.16,1,.3,1), transform 1s cubic-bezier(.16,1,.3,1);
+  }
+  .reveal.in{opacity:1;transform:translateY(0);}
+
+  .eyebrow{
+    font-size:12px;
+    letter-spacing:0.22em;
+    text-transform:uppercase;
+    color:var(--dim);
+    margin-bottom:22px;
+  }
+
+  h1.hero{
+    font-family:var(--font-display);
+    font-size:clamp(52px,10vw,148px);
+    line-height:0.9;
+    font-weight:600;
+    letter-spacing:-0.02em;
+  }
+  h1.hero em{
+    font-style:normal;
+    font-weight:300;
+    opacity:0.55;
+  }
+
+  .sub{
+    margin-top:28px;
+    max-width:540px;
+    font-size:clamp(15px,1.6vw,18px);
+    line-height:1.6;
+    color:var(--dim);
+    font-weight:300;
+  }
+
+  .chapter-label{
+    position:absolute;
+    bottom:48px;
+    left:6vw;
+    font-size:12px;
+    letter-spacing:0.18em;
+    color:var(--dim);
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .chapter-label .num{color:var(--ink);}
+
+  h2.big{
+    font-family:var(--font-display);
+    font-size:clamp(36px,7vw,94px);
+    line-height:1.04;
+    font-weight:500;
+    letter-spacing:-0.01em;
+    max-width:920px;
+  }
+  h2.big .accent{color:var(--dim);font-weight:300;}
+
+  .stat-row{
+    display:flex;
+    gap:64px;
+    margin-top:56px;
+    flex-wrap:wrap;
+  }
+  .stat .n{font-family:var(--font-display);font-size:clamp(28px,4vw,48px);font-weight:600;}
+  .stat .l{font-size:12px;letter-spacing:0.1em;color:var(--dim);margin-top:8px;text-transform:uppercase;}
+
+  .cta-section{
+    align-items:center;
+    text-align:center;
+  }
+  .cta-section h2{
+    font-family:var(--font-display);
+    font-size:clamp(42px,9vw,124px);
+    font-weight:600;
+    line-height:0.94;
+    letter-spacing:-0.02em;
+  }
+  .cta-section .sub{margin:24px auto 44px;text-align:center;}
+
+  .btn{
+    display:inline-flex;
+    align-items:center;
+    gap:12px;
+    padding:18px 36px;
+    border:1px solid var(--line);
+    border-radius:100px;
+    color:var(--ink);
+    text-decoration:none;
+    font-size:14px;
+    letter-spacing:0.04em;
+    backdrop-filter:blur(6px);
+    background:rgba(244,242,238,0.04);
+    transition:background .35s ease, color .35s ease, border-color .35s ease, transform .15s ease;
+  }
+  .btn:hover{
+    background:var(--ink);
+    color:#04040a;
+  }
+
+  footer{
+    position:relative;
+    z-index:4;
+    padding:40px 6vw 56px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-size:12px;
+    color:var(--dim);
+    letter-spacing:0.05em;
+    flex-wrap:wrap;
+    gap:16px;
+  }
+  footer a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--line);}
+
+  .grain{
+    position:fixed;
+    top:0;left:0;width:100vw;height:100vh;
+    z-index:6;
+    pointer-events:none;
+    opacity:0.045;
+    mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  @media (max-width:640px){
+    .progress-rail{display:none;}
+    .stat-row{gap:40px;}
+  }
+</style>
+</head>
+<body>
+
+<div id="preloader"><span class="mark">DRIFT™</span></div>
+<div id="cursor"></div>
+
+<div id="scene"></div>
+<div id="scrim"></div>
+<div id="midground">
+  <div class="mg-num" id="mg1">01</div>
+  <div class="mg-num" id="mg2">02</div>
+  <div class="mg-num" id="mg3">03</div>
+  <div class="mg-ring-wrap"><div class="mg-ring"></div></div>
+</div>
+<div class="letterbox top"></div>
+<div class="letterbox bottom"></div>
+<div class="grain"></div>
+
+<div class="progress-rail"><div class="progress-fill" id="progressFill"></div></div>
+
+<nav>
+  <span class="mark">DRIFT™</span>
+  <span class="tag">Cursor-Reactive Scene — Demo Build</span>
+</nav>
+
+<main>
+
+  <section id="s1">
+    <div class="eyebrow reveal">A scene that watches you back</div>
+    <h1 class="hero reveal">Move your cursor.<br><em>Shift</em> the world.</h1>
+    <p class="sub reveal">Every layer here drifts at its own speed — the fog, the numerals floating behind the text, even the ring in the corner. Nothing is locked to a timeline. It's all reacting to where you are, right now.</p>
+    <div class="chapter-label"><span class="num">01</span> — Hold</div>
+  </section>
+
+  <section id="s2">
+    <h2 class="big reveal">Depth isn't a layout trick.<br><span class="accent">It's physics — every element drifting at a different rate.</span></h2>
+    <div class="stat-row reveal">
+      <div class="stat"><div class="n">3</div><div class="l">Independent Drift Layers</div></div>
+      <div class="stat"><div class="n">0</div><div class="l">Scripted Camera Paths</div></div>
+      <div class="stat"><div class="n">60fps</div><div class="l">Real-Time GPU</div></div>
+    </div>
+    <div class="chapter-label"><span class="num">02</span> — Drift</div>
+  </section>
+
+  <section id="s3">
+    <h2 class="big reveal">Graded, not just rendered.<br><span class="accent">A harder contrast curve, pushed until it reads like film stock.</span></h2>
+    <p class="sub reveal">Same raymarched fog approach as the rest of this series, tuned in the opposite direction — crushed shadows, hot highlights, a coarser grain. Built with raw WebGL, no post-processing pass needed.</p>
+    <div class="chapter-label"><span class="num">03</span> — Settle</div>
+  </section>
+
+  <section class="cta-section">
+    <div class="eyebrow reveal" style="text-align:center;">Prefer this mood over the others?</div>
+    <h2 class="reveal">Pick a feel,<br>I'll build it.</h2>
+    <p class="sub reveal">Every demo in this series is the same engine, re-graded. Yours can land anywhere on that spectrum.</p>
+    <a href="https://instagram.com/yourhandle" target="_blank" class="btn reveal">DM me on Instagram →</a>
+  </section>
+
+</main>
+
+<footer>
+  <span>© 2026 DRIFT — Design &amp; Development</span>
+  <span><a href="mailto:dyg.buran@gmail.com">dyg.buran@gmail.com</a></span>
+</footer>
+
+<script>
+function __motionInit(){
+(function(){
+
+  // ---------- RENDER SETUP ----------
+  const container = document.getElementById('scene');
+  let renderScale = window.innerWidth < 760 ? 0.55 : 0.68;
+
+  const renderer = new THREE.WebGLRenderer({ antialias:false, alpha:false });
+  container.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.OrthographicCamera(-1,1,1,-1,0,1);
+
+  const uniforms = {
+    resolution: { value: new THREE.Vector2(1,1) },
+    time: { value: 0 },
+    progress: { value: 0 },
+    mouse: { value: new THREE.Vector2(0,0) },
+    grain: { value: 0.05 },
+    vig: { value: 0.72 }
+  };
+
+  function applySize(){
+    const w = window.innerWidth, h = window.innerHeight;
+    renderer.setSize(Math.max(2, Math.floor(w*renderScale)), Math.max(2, Math.floor(h*renderScale)), false);
+    uniforms.resolution.value.set(w*renderScale, h*renderScale);
+  }
+  applySize();
+
+  const vertexShader = `
+    varying vec2 vUv;
+    void main(){
+      vUv = uv;
+      gl_Position = vec4(position, 1.0);
+    }
+  `;
+
+  const fragmentShader = `
+    precision highp float;
+    varying vec2 vUv;
+    uniform vec2 resolution;
+    uniform float time;
+    uniform float progress;
+    uniform vec2 mouse;
+    uniform float grain;
+    uniform float vig;
+
+    float hash13(vec3 p){
+      p = fract(p*0.3183099+0.1);
+      p *= 17.0;
+      return fract(p.x*p.y*p.z*(p.x+p.y+p.z));
+    }
+
+    float noise3(vec3 x){
+      vec3 i = floor(x);
+      vec3 f = fract(x);
+      f = f*f*(3.0-2.0*f);
+      return mix(
+        mix(mix(hash13(i+vec3(0.0,0.0,0.0)), hash13(i+vec3(1.0,0.0,0.0)), f.x),
+            mix(hash13(i+vec3(0.0,1.0,0.0)), hash13(i+vec3(1.0,1.0,0.0)), f.x), f.y),
+        mix(mix(hash13(i+vec3(0.0,0.0,1.0)), hash13(i+vec3(1.0,0.0,1.0)), f.x),
+            mix(hash13(i+vec3(0.0,1.0,1.0)), hash13(i+vec3(1.0,1.0,1.0)), f.x), f.y),
+        f.z
+      );
+    }
+
+    float fbm(vec3 p){
+      float v = 0.0;
+      float a = 0.55;
+      for(int i=0;i<3;i++){
+        v += a*noise3(p);
+        p *= 2.05;
+        a *= 0.5;
+      }
+      return v;
+    }
+
+    vec3 palette(float t, float phase){
+      vec3 a = vec3(0.55,0.5,0.55);
+      vec3 b = vec3(0.45,0.45,0.45);
+      vec3 c = vec3(1.0,1.0,1.0);
+      vec3 d = vec3(0.0,0.12,0.25) + phase;
+      return a + b*cos(6.28318*(c*t+d));
+    }
+
+    void main(){
+      vec2 uv = vUv;
+      vec2 p = uv*2.0-1.0;
+      p.x *= resolution.x/resolution.y;
+
+      vec2 m = mouse*0.22;
+      vec3 rayDir = normalize(vec3(p.x+m.x, p.y+m.y, -1.6));
+
+      float camZ = progress*40.0 + time*0.045;
+      vec3 drift = vec3(sin(camZ*0.15)*0.6, cos(camZ*0.11)*0.4, 0.0);
+      vec3 rayOrigin = vec3(drift.x, drift.y, camZ);
+
+      float moodT = progress + time*0.0015;
+      vec3 fogTint = palette(moodT, 0.0);
+      vec3 lightTint = palette(moodT, 0.35);
+      vec3 lightDir = normalize(vec3(0.3,0.5,1.0));
+
+      float t = 0.0;
+      float stepSize = 0.55;
+      vec3 col = vec3(0.0);
+      float trans = 1.0;
+      float sparkle = 0.0;
+
+      for(int i=0;i<32;i++){
+        vec3 pos = rayOrigin + rayDir*t;
+        float dens = fbm(pos*0.16);
+        dens = smoothstep(0.32,0.78,dens)*1.3;
+
+        float lightAmt = pow(max(dot(rayDir, lightDir),0.0), 16.0);
+
+        float sp = hash13(floor(pos*2.6));
+        if (sp > 0.982){
+          float tw = 0.5+0.5*sin(time*3.0 + sp*140.0);
+          sparkle += tw*(1.0 - t/20.0)*dens*0.85;
+        }
+
+        col += trans*dens*stepSize*(fogTint*0.3 + lightTint*lightAmt*2.6);
+        trans *= exp(-dens*stepSize*1.25);
+
+        t += stepSize*(1.0 + t*0.02);
+        if (trans < 0.025) break;
+        if (t > 24.0) break;
+      }
+
+      col += lightTint*sparkle;
+
+      vec3 bg = mix(fogTint*0.045, lightTint*0.16, pow(max(dot(rayDir,lightDir),0.0),5.0));
+      col += bg*trans;
+
+      // filmic contrast: crush shadows, let highlights punch through
+      col = pow(max(col,0.0), vec3(1.35));
+      col *= 2.0;
+      col = col / (1.0 + col*0.55);
+      col = mix(vec3(dot(col, vec3(0.299,0.587,0.114))), col, 1.25);
+
+      float dist = length(uv-0.5);
+      float vigAmt = smoothstep(0.98,0.18,dist);
+      col *= mix(1.0-vig, 1.0, vigAmt);
+
+      float n = hash13(vec3(uv*resolution.xy, time*60.0));
+      col += (n-0.5)*grain;
+
+      gl_FragColor = vec4(col,1.0);
+    }
+  `;
+
+  const material = new THREE.ShaderMaterial({ uniforms, vertexShader, fragmentShader });
+  const geometry = new THREE.PlaneGeometry(2,2);
+  scene.add(new THREE.Mesh(geometry, material));
+
+  // ---------- SCROLL (smoothed) ----------
+  let targetProgress = 0;
+  let smoothProgress = 0;
+
+  function getScrollProgress(){
+    const max = document.documentElement.scrollHeight - window.innerHeight;
+    return max > 0 ? Math.min(Math.max(window.scrollY / max, 0), 1) : 0;
+  }
+  window.addEventListener('scroll', () => { targetProgress = getScrollProgress(); }, { passive:true });
+
+  // ---------- MOUSE (smoothed, drives shader) ----------
+  let targetMouse = { x:0, y:0 };
+  let smoothMouse = { x:0, y:0 };
+  // raw mouse (drives cursor + parallax — snappier, no shader lag)
+  let rawMouse = { x: window.innerWidth/2, y: window.innerHeight/2 };
+  let cursorPos = { x: rawMouse.x, y: rawMouse.y };
+
+  window.addEventListener('mousemove', (e) => {
+    targetMouse.x = (e.clientX / window.innerWidth - 0.5) * 2;
+    targetMouse.y = -(e.clientY / window.innerHeight - 0.5) * 2;
+    rawMouse.x = e.clientX;
+    rawMouse.y = e.clientY;
+  }, { passive:true });
+
+  function onResize(){
+    renderScale = window.innerWidth < 760 ? 0.55 : 0.68;
+    applySize();
+  }
+  window.addEventListener('resize', onResize);
+
+  const progressFillEl = document.getElementById('progressFill');
+  const cursorEl = document.getElementById('cursor');
+  const mgNums = [document.getElementById('mg1'), document.getElementById('mg2'), document.getElementById('mg3')];
+  const ringWrap = document.querySelector('.mg-ring-wrap');
+  const clock = new THREE.Clock();
+
+  function animate(){
+    requestAnimationFrame(animate);
+    const dt = clock.getDelta();
+    uniforms.time.value += dt;
+
+    smoothProgress += (targetProgress - smoothProgress) * 0.07;
+    smoothMouse.x += (targetMouse.x - smoothMouse.x) * 0.05;
+    smoothMouse.y += (targetMouse.y - smoothMouse.y) * 0.05;
+
+    uniforms.progress.value = smoothProgress;
+    uniforms.mouse.value.set(smoothMouse.x, smoothMouse.y);
+
+    progressFillEl.style.height = (smoothProgress*100) + '%';
+
+    // ---------- MIDGROUND PARALLAX ----------
+    const driftX = smoothMouse.x * 18;
+    const driftY = smoothMouse.y * 14 + (smoothProgress - 0.5) * -70;
+    const activeIdx = Math.min(2, Math.floor(smoothProgress * 3));
+    mgNums.forEach((el, i) => {
+      el.classList.toggle('active', i === activeIdx);
+      const f = 0.6 + i*0.2;
+      el.style.transform = `translate(${driftX*f}px, ${driftY*f}px)`;
+    });
+    if (ringWrap) {
+      ringWrap.style.transform = `translate(${driftX*1.4}px, ${driftY*1.2 + smoothProgress*50}px)`;
+    }
+
+    // ---------- CURSOR FOLLOW ----------
+    cursorPos.x += (rawMouse.x - cursorPos.x) * 0.18;
+    cursorPos.y += (rawMouse.y - cursorPos.y) * 0.18;
+    cursorEl.style.transform = `translate(${cursorPos.x}px, ${cursorPos.y}px)`;
+
+    renderer.render(scene, camera);
+  }
+  targetProgress = getScrollProgress();
+  animate();
+
+  // ---------- STAGGERED REVEAL ON SCROLL ----------
+  document.querySelectorAll('main > section').forEach(sec => {
+    const items = sec.querySelectorAll('.reveal');
+    items.forEach((el, i) => { el.style.transitionDelay = (i * 0.12) + 's'; });
+  });
+
+  const revealEls = document.querySelectorAll('.reveal');
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) entry.target.classList.add('in');
+    });
+  }, { threshold: 0.2 });
+  revealEls.forEach(el => io.observe(el));
+
+  // ---------- MAGNETIC BUTTONS + CURSOR HOVER STATE ----------
+  document.querySelectorAll('.btn').forEach(btn => {
+    btn.addEventListener('mousemove', (e) => {
+      const r = btn.getBoundingClientRect();
+      const relX = e.clientX - (r.left + r.width/2);
+      const relY = e.clientY - (r.top + r.height/2);
+      btn.style.transform = `translate(${relX*0.28}px, ${relY*0.28}px)`;
+    });
+    btn.addEventListener('mouseenter', () => cursorEl.classList.add('hover'));
+    btn.addEventListener('mouseleave', () => {
+      cursorEl.classList.remove('hover');
+      btn.style.transform = 'translate(0,0)';
+    });
+  });
+
+  // ---------- PRELOADER / INTRO SETTLE ----------
+  function settleIn(){
+    document.getElementById('preloader').classList.add('hide');
+    container.classList.add('in');
+    document.querySelector('nav').classList.add('in');
+    document.querySelector('.progress-rail').classList.add('in');
+  }
+  if (document.readyState === 'complete') {
+    setTimeout(settleIn, 500);
+  } else {
+    window.addEventListener('load', () => setTimeout(settleIn, 500));
+  }
+
+})();
+}
+
+// Load Three.js explicitly and only start the scene once it's actually
+// ready — guards against the page rendering before the CDN script has
+// finished, which is what was leaving the preloader stuck.
+(function(){
+  function start(){
+    if (typeof THREE === 'undefined') {
+      setTimeout(start, 30);
+      return;
+    }
+    __motionInit();
+  }
+  var s = document.createElement('script');
+  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+  s.onload = start;
+  s.onerror = function(){
+    // CDN failed — still drop the preloader so the page isn't stuck forever.
+    var pre = document.getElementById('preloader');
+    if (pre) pre.classList.add('hide');
+  };
+  document.head.appendChild(s);
+})();
+</script>
+</body>
+</html>
