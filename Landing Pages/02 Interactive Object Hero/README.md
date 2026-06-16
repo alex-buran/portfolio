@@ -1,8 +1,8 @@
 # Interactive Object Hero
 
-A single-file landing page demo built around a procedurally generated 3D "sculpture" — drag to rotate, scroll to dolly the camera and scale the object. No downloaded `.glb`/`.obj` models, no textures, nothing to license.
+**[Live demo →](https://alex-buran.github.io/portfolio/Landing%20Pages/02%20Interactive%20Object%20Hero/)**
 
-Open `index.html` directly in a browser (double-click it). No build step, no external assets.
+A single-file landing page demo built around a procedurally generated 3D "sculpture" — drag to rotate, scroll to dolly the camera and scale the object. No downloaded `.glb`/`.obj` models, no textures, nothing to license.
 
 ## What it does
 
