@@ -1,8 +1,8 @@
 # Cinematic Scroll Hero
 
-A single-file landing page demo built around one hand-written WebGL fog/light shader, raymarched live in the browser — no stock video, no image sequences, nothing to load but code.
+**[Live demo →](https://alex-buran.github.io/portfolio/Landing%20Pages/01%20Cinematic%20Scroll%20Hero/)**
 
-Open `index.html` directly in a browser (double-click it). No build step, no server, no dependencies beyond a CDN font/Three.js include.
+A single-file landing page demo built around one hand-written WebGL fog/light shader, raymarched live in the browser — no stock video, no image sequences, nothing to load but code.
 
 ## What it does
 
