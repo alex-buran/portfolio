@@ -8,5 +8,6 @@ Each concept lives in its own folder with the source code (`index.html`) and a R
 
 1. **[Cinematic Scroll Hero](./01%20Cinematic%20Scroll%20Hero)** ([live demo](https://alex-buran.github.io/portfolio/Landing%20Pages/01%20Cinematic%20Scroll%20Hero/)) — a single hand-written WebGL fog/light shader, raymarched live in the browser, with a continuously shifting color mood across the scroll range.
 2. **[Interactive Object Hero](./02%20Interactive%20Object%20Hero)** ([live demo](https://alex-buran.github.io/portfolio/Landing%20Pages/02%20Interactive%20Object%20Hero/)) — a procedurally generated 3D object you can drag to rotate, with inertia, idle auto-rotate, and a scroll-linked camera dolly.
+3. **[Parallax Cut Scroll Hero](./03%20Parallax%20Cut%20Scroll%20Hero)** ([live demo](https://alex-buran.github.io/portfolio/Landing%20Pages/03%20Parallax%20Cut%20Scroll%20Hero/)) — same raymarched fog/light approach as concept 1, with a punchier filmic contrast curve, cursor-driven parallax on the midground layer, and a sine/cosine camera drift instead of a straight push forward.
 
 More concepts will be added here over time.
