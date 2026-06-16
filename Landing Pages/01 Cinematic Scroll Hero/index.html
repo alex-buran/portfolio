@@ -421,7 +421,7 @@ function __motionInit(){
     time: { value: 0 },
     progress: { value: 0 },
     mouse: { value: new THREE.Vector2(0,0) },
-    grain: { value: 0.05 },
+    grain: { value: 0.035 },
     vig: { value: 0.72 }
   };
 
@@ -488,6 +488,16 @@ function __motionInit(){
       return a + b*cos(6.28318*(c*t+d));
     }
 
+    // Punchier, more saturated cycle used only for the backdrop gradient —
+    // the fog palette() above stays muted so the two don't fight.
+    vec3 bgPalette(float t){
+      vec3 a = vec3(0.5,0.5,0.5);
+      vec3 b = vec3(0.5,0.5,0.5);
+      vec3 c = vec3(1.0,1.0,1.0);
+      vec3 d = vec3(0.0,0.33,0.67);
+      return a + b*cos(6.28318*(c*t+d));
+    }
+
     void main(){
       vec2 uv = vUv;
       vec2 p = uv*2.0-1.0;
@@ -522,16 +532,33 @@ function __motionInit(){
         if(trans < 0.02 || t > 9.0) break;
       }
 
-      vec3 base = palette(progress*0.5, time*0.015) * 0.06;
+      // Vibrant backdrop gradient: hue shifts as you scroll (plus a slow drift
+      // over time), brighter in the center and dimming toward the edges. Kept
+      // low-strength so it stays a faint, color-mood wash under the fog/grain.
+      float bgT = progress*0.9 + time*0.008;
+      float bgR = length(p*vec2(0.8,1.0));
+      vec3 bgCenter = bgPalette(bgT);
+      vec3 bgEdge = bgPalette(bgT + 0.12) * 0.35;
+      vec3 base = mix(bgCenter, bgEdge, smoothstep(0.0, 1.5, bgR)) * 0.16;
       col = base + col;
 
-      float sparkle = pow(hash13(vec3(floor(p*340.0), floor(time*7.0))), 26.0);
-      col += sparkle * 1.4 * (0.3 + density);
+      // Dust sparkle, crossfaded between two random frames instead of
+      // snapping straight to a new one — softens the flicker considerably.
+      float sparkleStep = time*3.0;
+      float sparkleA = pow(hash13(vec3(floor(p*340.0), floor(sparkleStep))), 24.0);
+      float sparkleB = pow(hash13(vec3(floor(p*340.0), floor(sparkleStep)+1.0)), 24.0);
+      float sparkle = mix(sparkleA, sparkleB, smoothstep(0.0, 1.0, fract(sparkleStep)));
+      col += sparkle * 1.0 * (0.3 + density);
 
       float vigAmt = length(p*vec2(0.85,1.0));
       col *= mix(1.0, 1.0 - vig, smoothstep(0.4, 1.3, vigAmt));
 
-      float g = (hash13(vec3(p*resolution.xy, time*60.0)) - 0.5) * grain;
+      // Grain, also crossfaded frame-to-frame (24fps-equivalent) instead of
+      // a fresh hard-random value every frame — reads as film grain, not static.
+      float grainStep = time*24.0;
+      float grainA = hash13(vec3(p*resolution.xy, floor(grainStep)));
+      float grainB = hash13(vec3(p*resolution.xy + 11.0, floor(grainStep)+1.0));
+      float g = (mix(grainA, grainB, smoothstep(0.0, 1.0, fract(grainStep))) - 0.5) * grain;
       col += g;
 
       col = pow(max(col, 0.0), vec3(0.92));
