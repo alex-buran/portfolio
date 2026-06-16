@@ -402,8 +402,8 @@
   <span><a href="mailto:dyg.buran@gmail.com">dyg.buran@gmail.com</a></span>
 </footer>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
+function __motionInit(){
 (function(){
 
   // ---------- RENDER SETUP ----------
@@ -646,6 +646,29 @@
   }
   tick();
 
+})();
+}
+
+// Load Three.js explicitly and only start the scene once it's actually
+// ready — guards against the page rendering before the CDN script has
+// finished, which is what was leaving the preloader stuck.
+(function(){
+  function start(){
+    if (typeof THREE === 'undefined') {
+      setTimeout(start, 30);
+      return;
+    }
+    __motionInit();
+  }
+  var s = document.createElement('script');
+  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+  s.onload = start;
+  s.onerror = function(){
+    // CDN failed — still drop the preloader so the page isn't stuck forever.
+    var pre = document.getElementById('preloader');
+    if (pre) pre.classList.add('hide');
+  };
+  document.head.appendChild(s);
 })();
 </script>
 </body>
