@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Malevolent Shrine — A Domain Expansion in WebGL</title>
+  <meta name="description" content="A scroll-driven WebGL hero built from a looping video texture and hand-written GLSL — shader-driven zoom, parallax, and color grading on a camera-locked plane. Non-commercial fan project." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <div id="preloader">
+    <div class="preloader-inner">
+      <span class="preloader-glyph">呪</span>
+      <div class="preloader-bar"><div class="preloader-fill"></div></div>
+      <span class="preloader-pct">0%</span>
+    </div>
+  </div>
+
+  <canvas id="grain-canvas" aria-hidden="true"></canvas>
+  <div class="cursor-dot"></div>
+  <div class="cursor-ring"></div>
+
+  <canvas id="scene-canvas"></canvas>
+  <video
+    id="hero-video"
+    src="assets/hero.mp4"
+    poster="assets/hero.png"
+    muted
+    loop
+    playsinline
+    autoplay
+    preload="auto"
+    aria-hidden="true"
+  ></video>
+
+  <header class="site-nav">
+    <span class="nav-mark">MALEVOLENT SHRINE</span>
+    <nav class="nav-links">
+      <a href="#chapter-1" class="cursor-hover">I</a>
+      <a href="#chapter-2" class="cursor-hover">II</a>
+      <a href="#chapter-3" class="cursor-hover">III</a>
+      <a href="#climax" class="cursor-hover">IV</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-content reveal">
+        <p class="kicker">DOMAIN EXPANSION — FAN PROJECT</p>
+        <h1>MALEVOLENT<br />SHRINE</h1>
+        <p class="hero-sub">Scroll to enter the barrier.</p>
+      </div>
+      <div class="scroll-cue reveal">
+        <span></span>
+        <p>SCROLL</p>
+      </div>
+    </section>
+
+    <section id="chapter-1" class="chapter">
+      <div class="chapter-content reveal">
+        <span class="chapter-index">I</span>
+        <h2>The Barrier Forms</h2>
+        <p>
+          The scene is a short looping video, mapped onto a plane
+          that's parented to the camera so it always fills the frame
+          exactly, at any window size, with no stretching. Scrolling
+          doesn't move a camera through space — it drives a shader-side
+          zoom that pushes deeper into the gate, frame by frame.
+        </p>
+      </div>
+    </section>
+
+    <section id="chapter-2" class="chapter chapter-right">
+      <div class="chapter-content reveal">
+        <span class="chapter-index">II</span>
+        <h2>A Frame, Not a Photo</h2>
+        <p>
+          The fragment shader fits the video into the frame by hand — a
+          per-pixel "background-size: cover" equivalent that compares
+          screen aspect to video aspect before sampling, so the gate
+          never warps or letterboxes as the window resizes.
+        </p>
+      </div>
+    </section>
+
+    <section id="chapter-3" class="chapter">
+      <div class="chapter-content reveal">
+        <span class="chapter-index">III</span>
+        <h2>Zoom Without a Camera Move</h2>
+        <p>
+          Scrolling drives a shader-side zoom that scales the video's UV
+          coordinates around the frame's center, pushing into the gate
+          without moving any real geometry toward it — the entire scroll
+          journey lives in this one effect, end to end.
+        </p>
+      </div>
+    </section>
+
+    <section id="climax" class="climax">
+      <div class="climax-content reveal">
+        <span class="chapter-index">IV</span>
+        <h2>Inside the Maw</h2>
+        <p>
+          Pointer movement nudges the shader's UV offset, adding a
+          parallax tilt on top of motion that's already real — the water
+          and the red aura drift are baked into the video itself, not
+          faked in the shader. A darken pass, a distance-based vignette,
+          and a faint warm color grade run on top of every frame, all in
+          GLSL, grading the footage rather than replacing it.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p class="disclosure">
+      "Malevolent Shrine" is a non-commercial fan project depicting
+      Sukuna's Domain Expansion from <em>Jujutsu Kaisen</em> by Gege
+      Akutami, including the character's likeness and the domain's name
+      in its original script. Built for portfolio purposes only — not
+      for sale, not monetized, no affiliation with the original creators
+      or publishers.
+    </p>
+    <p class="credits">Built from scratch — AI-generated hero video, custom GLSL shader pass for framing and grading, hand-rolled scroll/parallax.</p>
+  </footer>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
