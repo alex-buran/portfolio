@@ -1,0 +1,358 @@
+:root {
+  --bg: #0a0303;
+  --ink: #f3e9e2;
+  --ember: #ff5a1f;
+  --blood: #7a1414;
+  --muted: #c9a99f;
+  --font-display: 'Cinzel', serif;
+  --font-body: 'Inter', sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  cursor: none;
+  overflow-x: hidden;
+}
+
+a { color: inherit; text-decoration: none; }
+
+/* ---------------------------------------------------------------- */
+/* Preloader                                                          */
+/* ---------------------------------------------------------------- */
+
+#preloader {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.8s ease, visibility 0.8s ease;
+}
+
+#preloader.is-done {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.preloader-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.preloader-glyph {
+  font-family: var(--font-display);
+  font-size: 2.6rem;
+  color: var(--ember);
+  text-shadow: 0 0 24px rgba(255, 90, 31, 0.6);
+}
+
+.preloader-bar {
+  width: 220px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.preloader-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--ember);
+  transition: width 0.2s ease;
+}
+
+.preloader-pct {
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  color: var(--muted);
+}
+
+/* ---------------------------------------------------------------- */
+/* Cursor + grain                                                      */
+/* ---------------------------------------------------------------- */
+
+.cursor-dot, .cursor-ring {
+  position: fixed;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 90;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.cursor-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--ember);
+  margin-left: 0;
+  margin-top: 0;
+}
+
+.cursor-ring {
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(255, 90, 31, 0.5);
+  transition: width 0.25s ease, height 0.25s ease, border-color 0.25s ease;
+}
+
+.cursor-ring.is-active {
+  width: 52px;
+  height: 52px;
+  border-color: var(--ember);
+}
+
+@media (hover: none) {
+  .cursor-dot, .cursor-ring { display: none; }
+  html, body { cursor: auto; }
+}
+
+#grain-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0.35;
+  mix-blend-mode: overlay;
+}
+
+/* ---------------------------------------------------------------- */
+/* Scene canvas                                                       */
+/* ---------------------------------------------------------------- */
+
+#scene-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  /* Fallback if JS/WebGL never paints: a still frame from the hero
+     video instead of an empty page background. */
+  background: var(--bg) url('../assets/hero.png') center / cover no-repeat;
+}
+
+/* The hero video is the texture source for the WebGL plane above, not
+   something meant to be seen directly. Chrome pauses frame decoding
+   for video elements it judges "not visible" -- and that check isn't
+   just display:none. Shrinking to 1px trips it, moving it outside the
+   viewport trips it, and opacity:0 can trip it too, since all three
+   are ways of saying "nothing here to paint." A genuinely full-opacity,
+   full-size, in-viewport video is never flagged as invisible, so
+   instead of hiding it with opacity this is hidden the boring, reliable
+   way: it sits at full opacity directly behind the opaque WebGL canvas
+   (negative z-index), which paints over it completely every frame.
+   Decoding never pauses because nothing about the video element itself
+   says "don't bother." */
+#hero-video {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 1;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------- */
+/* Nav                                                                 */
+/* ---------------------------------------------------------------- */
+
+.site-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.6rem 2.4rem;
+  font-family: var(--font-display);
+  letter-spacing: 0.12em;
+  font-size: 0.78rem;
+  mix-blend-mode: difference;
+}
+
+.nav-links { display: flex; gap: 1.4rem; }
+.nav-links a { opacity: 0.7; transition: opacity 0.2s ease; }
+.nav-links a:hover { opacity: 1; }
+
+/* ---------------------------------------------------------------- */
+/* Sections                                                            */
+/* ---------------------------------------------------------------- */
+
+main { position: relative; z-index: 10; }
+
+section {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  padding: 0 8vw;
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.9s ease, transform 0.9s ease;
+}
+
+.reveal.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.hero {
+  justify-content: center;
+  text-align: center;
+  flex-direction: column;
+}
+
+.kicker {
+  font-size: 0.72rem;
+  letter-spacing: 0.3em;
+  color: var(--ember);
+  margin-bottom: 1.2rem;
+}
+
+.hero h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(3rem, 11vw, 8rem);
+  line-height: 1.02;
+  margin: 0;
+  text-shadow: 0 0 40px rgba(255, 80, 30, 0.35);
+}
+
+.hero-sub {
+  margin-top: 1.4rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+}
+
+.scroll-cue {
+  position: absolute;
+  bottom: 3rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.scroll-cue span {
+  width: 1px;
+  height: 36px;
+  background: linear-gradient(to bottom, var(--ember), transparent);
+  animation: scrollPulse 1.8s ease-in-out infinite;
+}
+
+.scroll-cue p {
+  font-size: 0.65rem;
+  letter-spacing: 0.3em;
+  color: var(--muted);
+}
+
+@keyframes scrollPulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+.chapter, .climax {
+  justify-content: flex-start;
+}
+
+.chapter-right { justify-content: flex-end; }
+
+.chapter-content, .climax-content {
+  max-width: 30rem;
+  background: linear-gradient(160deg, rgba(10, 3, 3, 0.78), rgba(10, 3, 3, 0.35));
+  padding: 2.4rem 2.2rem;
+  border-left: 2px solid var(--ember);
+  backdrop-filter: blur(2px);
+}
+
+.chapter-right .chapter-content {
+  border-left: none;
+  border-right: 2px solid var(--ember);
+  text-align: right;
+}
+
+.chapter-index {
+  display: block;
+  font-family: var(--font-display);
+  color: var(--ember);
+  font-size: 0.9rem;
+  letter-spacing: 0.2em;
+  margin-bottom: 0.6rem;
+}
+
+.chapter-content h2, .climax-content h2 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(1.8rem, 3.4vw, 2.6rem);
+  margin: 0 0 1rem;
+}
+
+.chapter-content p, .climax-content p {
+  color: var(--muted);
+  line-height: 1.7;
+  font-size: 0.95rem;
+  font-weight: 300;
+}
+
+.climax {
+  justify-content: center;
+  text-align: center;
+}
+
+.climax-content {
+  border-left: none;
+  border-top: 2px solid var(--ember);
+  margin: 0 auto;
+}
+
+/* ---------------------------------------------------------------- */
+/* Footer                                                              */
+/* ---------------------------------------------------------------- */
+
+.site-footer {
+  position: relative;
+  z-index: 10;
+  padding: 4rem 8vw 5rem;
+  background: linear-gradient(to bottom, transparent, rgba(0,0,0,0.6));
+}
+
+.disclosure {
+  max-width: 38rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.6;
+  font-style: italic;
+}
+
+.credits {
+  margin-top: 1rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  color: rgba(201, 169, 159, 0.5);
+}
+
+@media (max-width: 720px) {
+  section { padding: 0 6vw; }
+  .chapter-content, .climax-content { max-width: 100%; }
+  .site-nav { padding: 1.2rem 1.4rem; }
+}
