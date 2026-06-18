@@ -8,10 +8,4 @@ A series of original landing page concepts, each centered on a different technic
 
 **[Browse Landing Pages →](./Landing%20Pages)**
 
-## Malevolent Shrine
-
-The flagship piece: a scroll-driven WebGL scene built around a looping hero video and hand-written GLSL grading, split across multiple source files so the language stats reflect the work.
-
-**[View Malevolent Shrine →](./Malevolent%20Shrine)**
-
 More sections will be added here as new work gets built.
